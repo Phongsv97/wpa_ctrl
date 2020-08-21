@@ -40,11 +40,6 @@ static int wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf)
     return 0;
 }
 
-static int wpa_set_network(struct wpa_ctrl *ctrl, char *id, char *ssid)
-{
-  
-}
-
 static void parse_to_wifi_name(char *buff)
 {
     int r_size = 0;
@@ -69,25 +64,30 @@ static void parse_to_wifi_name(char *buff)
     }         
 }
 
-static int parse_mess(char *buff)
+static int parse_mess(char *buff, int &flag)
 {
     string myStr(buff), val;
     stringstream ss(myStr);
 
     while (getline(ss, val, ' ')) {
         if (!val.compare("reason=CONN_FAILED")) {
-           cout << "Connect failed" << endl;
-           cout << "Please check your wifi password" << endl;
-           return -1;
+            flag--;
+            if (!flag) {
+                cout << "Connect failed" << endl;
+                cout << "Please check your wifi password" << endl;
+                return -1;
+            }
         }
 
        if (!val.compare("<3>CTRL-EVENT-NETWORK-NOT-FOUND")) {
+           flag = 0;
            cout << "Connect failed" << endl;
            cout << "Please check your wifi name" << endl;
            return -1;
        }
 
        if (!val.compare("<3>CTRL-EVENT-CONNECTED")) {
+           flag = 0;
            cout << "Connect successfully" << endl;
            return -1;
        }
@@ -135,9 +135,9 @@ static void wpa_recv_pending(struct wpa_ctrl *ctrl, int &flag)
         size_t len = 2047;
         if (wpa_ctrl_recv(ctrl, mess, &len) == 0) {
             mess[len] = '\0';
-            ret = parse_mess(mess);
+            ret = parse_mess(mess, flag);
             if (ret < 0)
-                flag = 0;
+                 flag = 0;
         } else {
             cout << "Could not read pending message." << endl;
             break;
@@ -154,9 +154,6 @@ int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
     int val;
     fstream fp;
     char *pos;
-    char ch;
-    char *cmd = new char[100];
-    char *tem = new char[2048];
     char *buff = new char[64];
     char *OK = new char[2];
 
@@ -192,58 +189,22 @@ int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
         cout << "Size: " << strlen(this->psk) << endl << "Psk must be 8...63 characters\n" <<endl;
         return -1;
     }
-    
-    if ((wpa_ctrl_cmd(this->ctrl_conn, "ADD_NETWORK", tem)) < 0) 
+	
+    fp.open("/etc/wpa_supplicant/wpa_supplicant.conf", ios::out);
+    if(!fp.is_open()) {
+        cout << "error while opening file /etc/wpa_supplicant/wpa_supplicant.conf" << endl;
         return -1;
-    else {
-        cout << "PHONGLT: " << tem << "size: " << strlen(tem) <<  endl;
-        ch = *tem;
     }
-    
-    sprintf(cmd, "%s %c %s \"%s\"", "SET_NETWORK", ch, "ssid", this->ssid);
-    cout << "cmd: " << cmd << endl;
-    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
-        return -1;
-    else 
-        cout << "mess: " << tem << endl;
 
-    sprintf(cmd, "%s %c %s \"%s\"", "SET_NETWORK", ch, "psk", this->psk);
-    cout << "cmd: " << cmd << endl;
-    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
-        return -1;
-    else 
-        cout << "mess: " << tem << endl;
+    fp << "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" << endl;
+    fp << "update_config=1" << endl << "country=VN" << endl << endl;
+    fp << "network={" << endl;
+    fp << "\tssid=\"" << this->ssid << "\"" << endl;
+    fp << "\tpsk=\"" << this->psk << "\"" << endl;
+    fp << "}\n" << endl;
+    fp.close();
 
-    sprintf(cmd, "%s %c", "ENABLE_NETWORK", ch);
-    cout << "cmd: " << cmd << endl;
-    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
-        return -1;
-    else 
-        cout << "mess: " << tem << endl;
-
-    sprintf(cmd, "%s %c", "SELECT_NETWORK ", ch);
-    cout << "cmd: " << cmd << endl;
-    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
-        return -1;
-    else 
-        cout << "mess: " << tem << endl;
-
-    // if ((wpa_ctrl_cmd(this->ctrl_conn, "SAVE_CONFIG", tem)) < 0) 
-    //     return -1;	
-    // fp.open("/etc/wpa_supplicant/wpa_supplicant.conf", ios::out);
-    // if(!fp.is_open()) {
-    //     cout << "error while opening file /etc/wpa_supplicant/wpa_supplicant.conf" << endl;
-    //     return -1;
-    // }
-
-    // fp << "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" << endl;
-    // fp << "update_config=1" << endl << "country=VN" << endl << endl;
-    // fp << "network={" << endl;
-    // fp << "\tssid=\"" << this->ssid << "\"" << endl;
-    // fp << "\tpsk=\"" << this->psk << "\"" << endl;
-    // fp << "}\n" << endl;
-    // fp.close();
-
+    /* connect to wifi */
     if ((wpa_ctrl_cmd(this->ctrl_conn, "RECONFIGURE", OK)) < 0) 
         return -1;
     else { 
@@ -251,12 +212,13 @@ int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
         cout << "Wait a few seconds ... " << endl;
     }
 
+    /* receiving event messages */
     if (wpa_ctrl_attach(ctrl_conn) < 0) {
             cout << "Warning: Failed to attach to wpa_supplicant." << endl;
             return -1;
     }
 
-    this->flag = 1;
+    this->flag = 2;
 
     while(this->flag) {
         wpa_recv_pending(this->ctrl_conn, this->flag);

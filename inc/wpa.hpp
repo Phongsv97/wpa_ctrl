@@ -20,7 +20,7 @@ using namespace std;
 #define INTERFACE  "wlan0"
 #define CTRL_IFACE "/var/run/wpa_supplicant/wlan0"
 
-static int parse_mess(char *buff);
+static int parse_mess(char *buff, int &flag);
 static void parse_to_wifi_name(char *buff);
 static int wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf);
 static void wpa_recv_pending(struct wpa_ctrl *ctrl, int &flag);
