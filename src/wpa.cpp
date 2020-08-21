@@ -40,6 +40,11 @@ static int wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf)
     return 0;
 }
 
+static int wpa_set_network(struct wpa_ctrl *ctrl, char *id, char *ssid)
+{
+  
+}
+
 static void parse_to_wifi_name(char *buff)
 {
     int r_size = 0;
@@ -149,7 +154,9 @@ int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
     int val;
     fstream fp;
     char *pos;
-    char *err = new char[2048];
+    char ch;
+    char *cmd = new char[100];
+    char *tem = new char[2048];
     char *buff = new char[64];
     char *OK = new char[2];
 
@@ -185,20 +192,57 @@ int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
         cout << "Size: " << strlen(this->psk) << endl << "Psk must be 8...63 characters\n" <<endl;
         return -1;
     }
-	
-    fp.open("/etc/wpa_supplicant/wpa_supplicant.conf", ios::out);
-    if(!fp.is_open()) {
-        cout << "error while opening file /etc/wpa_supplicant/wpa_supplicant.conf" << endl;
+    
+    if ((wpa_ctrl_cmd(this->ctrl_conn, "ADD_NETWORK", tem)) < 0) 
         return -1;
+    else {
+        cout << "PHONGLT: " << tem << "size: " << strlen(tem) <<  endl;
+        ch = *tem;
     }
+    
+    sprintf(cmd, "%s %c %s \"%s\"", "SET_NETWORK", ch, "ssid", this->ssid);
+    cout << "cmd: " << cmd << endl;
+    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
+        return -1;
+    else 
+        cout << "mess: " << tem << endl;
 
-    fp << "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" << endl;
-    fp << "update_config=1" << endl << "country=VN" << endl << endl;
-    fp << "network={" << endl;
-    fp << "\tssid=\"" << this->ssid << "\"" << endl;
-    fp << "\tpsk=\"" << this->psk << "\"" << endl;
-    fp << "}\n" << endl;
-    fp.close();
+    sprintf(cmd, "%s %c %s \"%s\"", "SET_NETWORK", ch, "psk", this->psk);
+    cout << "cmd: " << cmd << endl;
+    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
+        return -1;
+    else 
+        cout << "mess: " << tem << endl;
+
+    sprintf(cmd, "%s %c", "ENABLE_NETWORK", ch);
+    cout << "cmd: " << cmd << endl;
+    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
+        return -1;
+    else 
+        cout << "mess: " << tem << endl;
+
+    sprintf(cmd, "%s %c", "SELECT_NETWORK ", ch);
+    cout << "cmd: " << cmd << endl;
+    if ((wpa_ctrl_cmd(this->ctrl_conn, cmd, tem)) < 0) 
+        return -1;
+    else 
+        cout << "mess: " << tem << endl;
+
+    // if ((wpa_ctrl_cmd(this->ctrl_conn, "SAVE_CONFIG", tem)) < 0) 
+    //     return -1;	
+    // fp.open("/etc/wpa_supplicant/wpa_supplicant.conf", ios::out);
+    // if(!fp.is_open()) {
+    //     cout << "error while opening file /etc/wpa_supplicant/wpa_supplicant.conf" << endl;
+    //     return -1;
+    // }
+
+    // fp << "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" << endl;
+    // fp << "update_config=1" << endl << "country=VN" << endl << endl;
+    // fp << "network={" << endl;
+    // fp << "\tssid=\"" << this->ssid << "\"" << endl;
+    // fp << "\tpsk=\"" << this->psk << "\"" << endl;
+    // fp << "}\n" << endl;
+    // fp.close();
 
     if ((wpa_ctrl_cmd(this->ctrl_conn, "RECONFIGURE", OK)) < 0) 
         return -1;
@@ -220,7 +264,6 @@ int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
     
     delete[] buff;
     delete[] OK;
-    delete[] err;
 
     return 0;
 }
