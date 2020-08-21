@@ -1,4 +1,4 @@
-#include "wpa.h"
+#include "wpa.hpp"
 
 int main(int argc, char *argv[])
 {

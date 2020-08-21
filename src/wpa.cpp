@@ -1,4 +1,4 @@
-#include "wpa.h"
+#include "wpa.hpp"
 
 Wpa::Wpa()
 {
@@ -19,10 +19,10 @@ void Wpa::usage(void)
     cout << "  -d = disconnect (wifi down)" << endl;
     cout << "  -u = up (wifi up)"  << endl;
     cout << "ex: sudo wpa_ctrl -c \"ALL LUMI\" lumivn274" << endl;
-    cout << "default path: /etc/wpa_supplicant/wpa_supplicant.conf" << endl;
+    cout << "default etc path: /etc/wpa_supplicant/wpa_supplicant.conf" << endl;
 }
 
-int wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf)
+static int wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf)
 {
     int ret;
     size_t len = 4096;
@@ -40,7 +40,7 @@ int wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf)
     return 0;
 }
 
-void parse_to_wifi_name(char *buff)
+static void parse_to_wifi_name(char *buff)
 {
     int r_size = 0;
     string myStr(buff), val, line;
@@ -62,6 +62,33 @@ void parse_to_wifi_name(char *buff)
             continue;
         cout << '\t' << array[i][4] << endl;
     }         
+}
+
+static int parse_mess(char *buff)
+{
+    string myStr(buff), val;
+    stringstream ss(myStr);
+
+    while (getline(ss, val, ' ')) {
+        if (!val.compare("reason=CONN_FAILED")) {
+           cout << "Connect failed" << endl;
+           cout << "Please check your wifi password" << endl;
+           return -1;
+        }
+
+       if (!val.compare("<3>CTRL-EVENT-NETWORK-NOT-FOUND")) {
+           cout << "Connect failed" << endl;
+           cout << "Please check your wifi name" << endl;
+           return -1;
+       }
+
+       if (!val.compare("<3>CTRL-EVENT-CONNECTED")) {
+           cout << "Connect successfully" << endl;
+           return -1;
+       }
+    }
+
+    return 0;
 }
 
 int Wpa::scan_results(void)
@@ -94,11 +121,35 @@ int Wpa::scan_results(void)
     return 0;
 }
 
+static void wpa_recv_pending(struct wpa_ctrl *ctrl, int &flag)
+{
+    int ret;
+
+    while (wpa_ctrl_pending(ctrl) > 0) {
+        char mess[2048];
+        size_t len = 2047;
+        if (wpa_ctrl_recv(ctrl, mess, &len) == 0) {
+            mess[len] = '\0';
+            ret = parse_mess(mess);
+            if (ret < 0)
+                flag = 0;
+        } else {
+            cout << "Could not read pending message." << endl;
+            break;
+        }
+    }
+
+    if (wpa_ctrl_pending(ctrl) < 0) {
+        cout << "Connection to wpa_supplicant lost - trying to reconnect" << endl;
+    }
+}
+
 int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
 {
     int val;
     fstream fp;
     char *pos;
+    char *err = new char[2048];
     char *buff = new char[64];
     char *OK = new char[2];
 
@@ -149,11 +200,27 @@ int Wpa::config_wifi(int sPoint, int ePoint, char *argv[])
     fp << "}\n" << endl;
     fp.close();
 
-    wpa_ctrl_cmd(this->ctrl_conn, "RECONFIGURE", OK);
-    cout << "config wifi " << this->ssid << " status: " << OK << endl;
-    cout << "wait a few seconds ... " << endl;
+    if ((wpa_ctrl_cmd(this->ctrl_conn, "RECONFIGURE", OK)) < 0) 
+        return -1;
+    else { 
+        cout << "Config wifi " << this->ssid << " status: " << OK << endl;
+        cout << "Wait a few seconds ... " << endl;
+    }
 
+    if (wpa_ctrl_attach(ctrl_conn) < 0) {
+            cout << "Warning: Failed to attach to wpa_supplicant." << endl;
+            return -1;
+    }
+
+    this->flag = 1;
+
+    while(this->flag) {
+        wpa_recv_pending(this->ctrl_conn, this->flag);
+    };
+    
     delete[] buff;
+    delete[] OK;
+    delete[] err;
 
     return 0;
 }

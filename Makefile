@@ -22,14 +22,14 @@ CC  := $(COMPILER_DIR)/bin/$(PREFIX_GCC_COMPILER)-gcc
 CPP := $(COMPILER_DIR)/bin/$(PREFIX_GCC_COMPILER)-g++
 
 %.o: %.c $(INC_DIR)
-	$(CC) -c -o $@ $< -I $(INC_DIR) $(CFLAGS)
+	gcc -c -o $@ $< -I $(INC_DIR) $(CFLAGS)
 
 my_obj:
-	$(CPP) -c -o $(SRC_DIR)/wpa.o $(SRC_DIR)/wpa.cpp -I $(INC_DIR) $(CFLAGS)
-	$(CPP) -c -o $(SRC_DIR)/main.o $(SRC_DIR)/main.cpp -I $(INC_DIR) $(CFLAGS)
+	g++ -c -o $(SRC_DIR)/wpa.o $(SRC_DIR)/wpa.cpp -I $(INC_DIR) $(CFLAGS)
+	g++ -c -o $(SRC_DIR)/main.o $(SRC_DIR)/main.cpp -I $(INC_DIR) $(CFLAGS)
 
 all: clean my_obj $(OBJ_FILES)
-	$(CPP) $(CFLAGS) -lrt -o wpa_ctrl $(SRC_DIR)/main.o  $(SRC_DIR)/wpa.o $(OBJ_FILES) -I $(INC_DIR)
+	g++ $(CFLAGS) -lrt -o wpa_ctrl $(SRC_DIR)/main.o  $(SRC_DIR)/wpa.o $(OBJ_FILES) -I $(INC_DIR)
 
 clean:
 	rm -rf wpa_ctrl
