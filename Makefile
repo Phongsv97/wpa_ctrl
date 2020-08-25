@@ -16,7 +16,7 @@ CFLAGS  :=  -O2 -Wall -Wextra -g  \
 C_FILES   :=  wpa_debug.c os_unix.c eloop.c edit_simple.c  wpa_ctrl.c common.c
 OBJ_FILES := $(patsubst %.c, $(SRC_DIR)/%.o, $(C_FILES))
 
-COMPILER_DIR := /home/pi/work_space/wpa_ctrl/mt9050-cross-sdk-3.0.4/host/usr
+COMPILER_DIR 	:= /home/pi/work_space/wpa_ctrl/mt9050-cross-sdk-3.0.4/host/usr
 PREFIX_GCC_COMPILER	:= arm-linux-gnueabihf
 CC  := $(COMPILER_DIR)/bin/$(PREFIX_GCC_COMPILER)-gcc
 CPP := $(COMPILER_DIR)/bin/$(PREFIX_GCC_COMPILER)-g++

@@ -16,25 +16,33 @@ extern "C" {
 
 using namespace std;
 
-#define MAX_SIZE 40
+#define NETWORK_ID_MAX 8
 #define INTERFACE  "wlan0"
 #define CTRL_IFACE "/var/run/wpa_supplicant/wlan0"
 
-static int parse_mess(char *buff, int &flag);
-static void parse_to_wifi_name(char *buff);
-static int wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf);
-static void wpa_recv_pending(struct wpa_ctrl *ctrl, int &flag);
-
-class Wpa
+class WpaController
 {
-    private:
-        int flag;
-        char *ssid;
-        char *psk;
-        struct wpa_ctrl *ctrl_conn;
-    public:
-        Wpa();
-        void usage(void);
-        int scan_results(void);
-        int config_wifi(int, int, char **);
+private:
+    static WpaController* _mWpaCtrl;
+    struct wpa_ctrl *ctrl_conn;
+    char *ssid;
+    char *psk;
+    WpaController();
+public:
+    static WpaController* getInstance();
+    void usage(void);
+    int scan_results(void);
+    int config_wifi(int, int, char **);
+    int add_network();
+    int set_network(int netid, char *argv1, char *argv2);
+    int select_network(int netid);
+    int remove_network(int netid);
+    int save_config();
+    int reconfigure();
+    int disconnect();
+    int status();
 };
+
+static void parse_to_wifi_name(char *buff);
+static int check_status(char *buffer, char *ssid);
+static int _wpa_ctrl_cmd(struct wpa_ctrl *ctrl, char *cmd, char *buf);

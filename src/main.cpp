@@ -3,7 +3,7 @@
 int main(int argc, char *argv[])
 {
     int opt;
-    struct Wpa myWpa;
+    struct WpaController *mWpaCtrl = WpaController::getInstance();
 
     for(;;) {
         opt = getopt(argc, argv, "hsdcu");
@@ -11,23 +11,24 @@ int main(int argc, char *argv[])
             break;
         switch (opt) {
             case 'c':
-                myWpa.config_wifi(optind, argc, argv);
+                mWpaCtrl->config_wifi(optind, argc, argv);
                 break;
             case 'd':
+                mWpaCtrl->disconnect();
                 break;
             case 'h':
-                myWpa.usage();
+                mWpaCtrl->usage();
                 return 0;
             case 'u':
                 break;
             case 's':
-                myWpa.scan_results();
+                mWpaCtrl->scan_results();
                 break;
             case '?':
                 cout << "unknow option: " << (char)optopt << endl;
                 break;
             default:
-                myWpa.usage();
+                mWpaCtrl->usage();
                 return 1;
         }
     }
